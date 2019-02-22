@@ -248,7 +248,9 @@ If you already have docker images, you may push them to ACR as well.
 
 > If not, please use sample images for demo purpose.
 
-**Pull example images, tag them and push to your Azure Container Registry. You'll use these images to launch containers in AKS**
+**Pull example images, tag them and push to your Azure Container Registry. 
+You'll use these images to launch containers in AKS. 
+NOTE: Azure Cloud Shell cannot be used for the docker commands. Use a terminal session on your computer.**
 
     docker pull pkumar/helloworld:latest
     docker pull pkumar/helloworld:v2
@@ -262,6 +264,8 @@ If you already have docker images, you may push them to ACR as well.
 Your ACR registery -> Access Keys -> password**
 
     docker login <youracr.azurecr.io> -u <username>
+
+>Note: If you are use Git Bash on Windows, you may need to prefix the following command with `winpty`.
 
     docker push <yourRegistry.azurecr.io>/helloworld
     docker push <yourRegistry.azurecr.io>/helloworld:v2
@@ -278,15 +282,19 @@ PowerShell:
 
     $clientid=<yourSPclientID> or <appID> <-- created at beginning of the lab
     $acrid=$(az acr show --name $acrname --resource-group $acrresourcegroup --query "id" --output tsv)
+
 Bash:
 
-    export aksresourcegroup='demok8srg'
-    export aksclustername='demok8s'
-    export acrresourcegroup='demok8srg'
-    export acrname=<yourRegistry.azurecr.io>
+```
+aksclustername=demok8s
+# Persist for Later Sessions in Case of Timeout
+echo export aksclustername=$aksclustername >> ~/.bashrc
+acrname=<yourRegistryName>
+# Persist for Later Sessions in Case of Timeout
+echo export acrname=$acrname >> ~/.bashrc
 
-    export clientid=<yourSPclientID> or <appID> <-- created at beginning of the lab
-    export acrid=$(az acr show --name $acrname --resource-group $acrresourcegroup --query "id" --output tsv)
+clientid=<yourSPclientID> or <appID> <-- created at beginning of the lab
+acrid=$(az acr show --name $acrname --resource-group $resourceGroupName --query "id" --output tsv)
 
 >Create role assignment
 
@@ -296,7 +304,7 @@ Bash:
 
 **Get credentials to interact with AKS cluster:**
 
-    az aks get-credentials --resource-group demok8srg --name demok8s
+    az aks get-credentials --resource-group $resourceGroupName --name $aksclustername
 
 **Create K8s secret for deployments to pull images from ACR:**
 
@@ -309,8 +317,10 @@ Bash:
 **Install Helm & verify that Tiller is up & running successfully**
 
     helm init
-    kubectl get pods -n kube-system     <--Verify that tiller is up & running
-    helm list                           <-- This should work without any error
+    # Verify that tiller is up & running
+    helm version
+    # This should work without any error
+    helm list
 
 ## Private and Public Ingress
 
@@ -344,7 +354,11 @@ If you've public domain, you may setup A record to point to this IP e.g. demok8s
     On Windows: notepad c:\windows\system32\drivers\etc\hosts
     On Linux: vim /etc/hosts
 
-    13.14.15.16	demok8s.example.com
+    <LoadBalancer IP> demok8s.example.com  # Replace with your LoadBalancer EXTERNAL-IP, e.g. 13.14.15.16	demok8s.example.com
+
+While we are editing the hosts file, also add the following binding, we'll need these later:
+
+    <LoadBalancer IP> demo.example.com  # Replace with your LoadBalancer EXTERNAL-IP, e.g. 13.14.15.16	demo.example.com 
 
 ## Deploy apps to AKS
 
@@ -353,8 +367,18 @@ Note: This is independent of your application code which is in containers. If yo
 
 **Deploy three applications to AKS cluster**
 
->Internal application, accessible only on internal network through internal load balancer
+>Internal application, accessible only on internal network through internal load balancer. 
 
+In your preferred code editor, edit helloworld-internal.yaml, helloworld-v1.yaml, and helloworld-v2.yaml. 
+Replace <yourACRRegistry.azurecr.io> with the name of you ACR registry.
+Replace <k8sSecretName> with the secret you created earlier.
+
+```
+    spec:
+      containers:
+      - name: k8s-demo
+        image: <yourACRRegistry.azurecr.io>/helloworld:latest
+```
 
         kubectl create -f helloworld-internal.yaml
 >
@@ -394,7 +418,7 @@ http://demo.example.com/v2
 
 **Apply changes, and verify the increased number of pods**
 
-    kubectl apply -f helloworld-v1.yml
+    kubectl apply -f helloworld-v1.yaml
     kubectl get pods
 
 **Kill some pods & see what happens, e.g**
@@ -413,8 +437,11 @@ http://demo.example.com/v2
     kubectl apply -f storage.yaml
     kubectl apply -f headless.yaml
     kubectl apply -f stateful-mongo.yaml
->
-    kubectl get pods -o wide
+
+> These deployments may take several minutes to complete. 
+Use this time to review the manifests we just applied.
+
+    kubectl get pods -o wide --watch
     NAME                                             READY     STATUS    RESTARTS   AGE       IP             NODE
     cantankerous-blackbird-traefik-54ffb6ddc-ctxlp   1/1       Running   3          85d       172.16.0.26    aks-agentpool-23040724-2
     mongo-0                                          2/2       Running   0          29m       172.16.0.76    aks-agentpool-23040724-0
@@ -423,7 +450,7 @@ http://demo.example.com/v2
 
 **Login to mongo-0 and check if it is the primary node**
 
-    kubectl exec -it mongo-1 bash
+    kubectl exec -it mongo-0 bash
 
     root@mongo-0:/# mongo
     MongoDB shell version v4.0.6
@@ -439,16 +466,16 @@ http://demo.example.com/v2
 
 **Check available upgrate for your cluster and upgrade to it**
 
-    az aks get-upgrades --resource-group demok8srg --name demok8s --output table
-    az aks upgrade --resource-group demok8srg --name demok8s --kubernetes-version <upgrade version>
+    az aks get-upgrades --resource-group $resourceGroupName --name $aksclustername --output table
+    az aks upgrade --resource-group $resourceGroupName --name $aksclustername --kubernetes-version <upgrade version>
 
 **Wait for the cluster to be upgraded and then check the version of cluster again**
 
-    az aks show --resource-group demok8srg --name demok8s --output table
+    az aks show --resource-group $resourceGroupName --name $aksclustername --output table
 
 **Try scaling up your cluster either through portal or through command line as follows:**
 
-    az aks scale --name demok8s --resource-group demok8srg --node-count 5
+    az aks scale --resource-group $resourceGroupName --name $aksclustername --node-count 5
 
 
 ## Logging & Application Insights
