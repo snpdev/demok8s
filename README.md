@@ -152,7 +152,8 @@ PowerShell:
 
 Bash:
 
-```resourceDeploymentName='demoacrdeploy'
+```
+resourceDeploymentName='demoacrdeploy'
 #Change it as per your environment
 templatePath=$HOME/demok8s
 templateFile=acrDeploy.json
@@ -173,7 +174,8 @@ PowerShell:
 
 Bash:
 
-```az group deployment create \
+```
+az group deployment create \
 --name $resourceDeploymentName \
 --resource-group $resourceGroupName \
 --template-file $template \
@@ -209,7 +211,7 @@ PowerShell:
 
 Bash:
 
-```resourceDeploymentName='demok8sdeploy'
+```
 # Change templatePath as per your environment
 resourceDeploymentName=demok8sdeploy
 templatePath=$HOME/demok8s
@@ -231,7 +233,8 @@ PowerShell:
 
 Bash:
 
-```az group deployment create \
+```
+az group deployment create \
 --name $resourceDeploymentName \
 --resource-group $resourceGroupName \
 --template-file $template \
@@ -263,9 +266,9 @@ NOTE: Azure Cloud Shell cannot be used for the docker commands. Use a terminal s
 **On Azure portal find password to login to ACR. \
 Your ACR registery -> Access Keys -> password**
 
-    docker login <youracr.azurecr.io> -u <username>
+>Note: If you are use Git Bash on Windows, you may need to prefix the `docker login` command with `winpty`.
 
->Note: If you are use Git Bash on Windows, you may need to prefix the following command with `winpty`.
+    docker login <youracr.azurecr.io> -u <username>
 
     docker push <yourRegistry.azurecr.io>/helloworld
     docker push <yourRegistry.azurecr.io>/helloworld:v2
@@ -295,7 +298,7 @@ echo export acrname=$acrname >> ~/.bashrc
 
 clientid=<yourSPclientID> or <appID> <-- created at beginning of the lab
 acrid=$(az acr show --name $acrname --resource-group $resourceGroupName --query "id" --output tsv)
-
+```
 >Create role assignment
 
     az role assignment create --assignee $clientid --role Reader --scope $acrid
@@ -310,7 +313,7 @@ acrid=$(az acr show --name $acrname --resource-group $resourceGroupName --query 
 
     kubectl create secret docker-registry <giveSecretaName> --docker-server <yourRegistry.azurecr.io> --docker-username <clientid> --docker-password <SPPassword> --docker-email <yourEmailAddress>
 
->you need this (giveSecretaName) for k8s deployments.
+>You need this (giveSecretaName) for k8s deployments.
 
 ## Prepare AKS cluster for HELM deployments
 
@@ -349,7 +352,7 @@ For this demo you'll be exposing internal application through Azure Internal LB 
     virulent-dragon-traefik-dashboard   ClusterIP      10.0.33.244   <none>        80/TCP                       18s
 
 >Note down the External-IP of Public Load Balancer.\
-If you've public domain, you may setup A record to point to this IP e.g. demok8s.example.com. Accessing this will show you the dashboard of traefik. If not, please edit hosts file and add example domain pointing to LoadBalancer External IP:
+If you have a public domain, you may set up an A record to point to this IP e.g. demok8s.example.com. Accessing this will show you the dashboard of traefik. If not, please edit your local hosts file and add example domain pointing to LoadBalancer External IP:
 
     On Windows: notepad c:\windows\system32\drivers\etc\hosts
     On Linux: vim /etc/hosts
